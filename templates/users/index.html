@@ -16,27 +16,31 @@
                     <img src="{{ user.header_image_url }}" alt="" class="card-hero">
                   </div>
                   <div class="card-contents">
+    <!-- this links takes to the users_show profile -->
                     <a href="/users/{{ user.id }}" class="card-link">
                       <img src="{{ user.image_url }}" alt="Image for {{ user.username }}" class="card-image">
                       <p>@{{ user.username }}</p>
                     </a>
-
+<!-- THIS ALLOWS FOLLOWING TO WORK -->
                     {% if g.user %}
                       {% if g.user.is_following(user) %}
-                        <form method="POST">
-                              action="/users/stop-following/{{ user.id }}">
-                          <button class="btn btn-primary btn-sm">Unfollow</button>
+                      <form method="POST" action="/users/stop-following/{{ user.id }}">
+                        <button class="btn btn-primary btn-sm">Unfollow</button>
+                    </form>
+                    
                         </form>
                       {% else %}
-                        <form method="POST"
-                              action="/users/follow/{{ user.id }}">
-                          <button class="btn btn-outline-primary btn-sm">Follow</button>
+                      <form method="POST" action="/users/follow/{{ user.id }}">
+                        <button class="btn btn-outline-primary btn-sm">Follow</button>
+                    </form>
                         </form>
                       {% endif %}
                     {% endif %}
 
                   </div>
-                  <p class="card-bio">BIO HERE</p>
+                   <!-- Display user's bio -->
+                  <p class="card-bio">{{ user.bio }}</p>
+                
                 </div>
               </div>
             </div>

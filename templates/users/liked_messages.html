@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h3>Liked Messages for {{ user.username }}</h3>
+  
+  <ul>
+    {% for liked_message in liked_messages %}
+      <li>
+        <a href="/messages/{{ liked_message.id }}">{{ liked_message.text }}</a>
+        
+        <p>Liked by: {{ liked_message.user.username }}</p>
+        <p>Timestamp: {{ liked_message.timestamp.strftime('%d %B %Y') }}</p>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}
+
+
+
+
+
+

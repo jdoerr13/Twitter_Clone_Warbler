@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 
 {% block content %}
-
 <div id="warbler-hero" class="full-width"></div>
 <img src="{{ user.image_url }}" alt="Image for {{ user.username }}" id="profile-avatar">
 <div class="row full-width">
@@ -12,25 +11,31 @@
           <li class="stat">
             <p class="small">Messages</p>
             <h4>
-              <a href="/users/{{ user.id }}">{{ user.messages | length }}</a>
+              <a href="/users/{{ user.id }}">{{ user.messages.count() }}</a>
             </h4>
           </li>
-          <li class="stat">
-            <p class="small">Following</p>
-            <h4>
-              <a href="/users/{{ user.id }}/following">{{ user.following | length }}</a>
-            </h4>
-          </li>
-          <li class="stat">
-            <p class="small">Followers</p>
-            <h4>
-              <a href="/users/{{ user.id }}/followers">{{ user.followers | length }}</a>
-            </h4>
-          </li>
+
           <li class="stat">
             <p class="small">Likes</p>
-            <h4>TBD</h4>
+            <h4>
+              <a href="{{ url_for('liked_messages', user_id=user.id) }}">{{ user.user_likes.count() }}</a>
           </li>
+          <!-- <li class="stat">
+            <p class="small">Following</p>
+            <h4>
+              <a href="/users/{{ user.id }}/following">{{ user.following.count() }}</a>
+            </h4>
+          </li> -->
+          <li class="stat">
+            <p class="small"></p>
+            <h4>
+              <a href="/users/{{ user.id }}/followers" class="btn btn-outline-secondary">Following/Followers</a>
+            </h4>
+          </li>
+
+      
+
+
           <div class="ml-auto">
             {% if g.user.id == user.id %}
             <a href="/users/profile" class="btn btn-outline-secondary">Edit Profile</a>
@@ -40,9 +45,9 @@
             {% elif g.user %}
             {% if g.user.is_following(user) %}
             <form method="POST" action="/users/stop-following/{{ user.id }}">
-              <button class="btn btn-primary">Unfollow</button>
+              <button class="btn btn-outline-primary">Unfollow</button>
             </form>
-            {% else %}
+            
             <form method="POST" action="/users/follow/{{ user.id }}">
               <button class="btn btn-outline-primary">Follow</button>
             </form>
@@ -58,13 +63,11 @@
 <div class="row">
   <div class="col-sm-3">
     <h4 id="sidebar-username">@{{ user.username }}</h4>
-    <p>BIO HERE</p>
-    <p class="user-location"><span class="fa fa-map-marker"></span>LOCATION HERE</p>
+    <p>{{ user.bio }}</p> <!-- Display user's bio -->
+    <p class="user-location"><span class="fa fa-map-marker"></span>{{ user.location }}</p> <!-- Display user's location -->
   </div>
 
   {% block user_details %}
   {% endblock %}
-
 </div>
-
 {% endblock %}
