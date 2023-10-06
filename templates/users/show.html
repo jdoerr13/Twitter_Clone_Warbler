@@ -3,46 +3,51 @@
 {% block user_details %}
 
 <div class="col-sm-6">
-  <h4>Messages</h4>
-  <div class="col-lg-6 col-md-8 col-sm-12">
-    <ul class="list-group" id="messages">
+    <h4>Messages</h4>
+    <div class="row">
         {% for msg in user.messages %}
-        <li class="list-group-item">
-            <a href="/messages/{{ msg.id }}" class="message-link"></a>
-            <a href="/users/{{ msg.user.id }}">
-                <img src="{{ msg.user.image_url }}" alt="" class="timeline-image">
-            </a>
-            <div class="message-area">
-                <a href="/users/{{ msg.user.id }}">@{{ msg.user.username }}</a>
-                <span class="text-muted">{{ msg.timestamp.strftime('%d %B %Y') }}</span>
-                <p>{{ msg.text }}</p>
+        <div class="col-lg-6 col-md-8 col-sm-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <a href="/messages/{{ msg.id }}" class="message-link"></a>
+                    <a href="/users/{{ msg.user.id }}">
+                        <img src="{{ msg.user.image_url }}" alt="" class="timeline-image">
+                    </a>
+                    <div class="message-area">
+                        <a href="/users/{{ msg.user.id }}">@{{ msg.user.username }}</a>
+                        <p class="text-muted">{{ msg.timestamp.strftime('%d %B %Y') }}</p>
+                        <p>{{ msg.text }}</p>
+                        <!-- Display like count -->
+                        <p class="mb-2">Likes: {{ msg.like_count }}</p>
+                        <!-- Check if the user is logged in and if they have liked the message -->
+                        {% if g.user %}
+                        {% if msg.is_liked_by(g.user) %}
+                        <p>You liked this message!</p>
+                        {% else %}
+                        <a href="{{ url_for('like', message_id=msg.id) }}" class="btn btn-sm btn-primary">
+                            <i class="fa fa-star"></i> Like
+                        </a>
+                        <a href="{{ url_for('unlike', message_id=msg.id) }}" class="btn btn-sm btn-secondary">
+                            <i class="fa fa-star"></i> Unlike
+                        </a>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-            
-            {% if g.user %}
-            <a href="{{ url_for('like', message_id=msg.id) }}" class="btn btn-sm btn-primary">
-                <i class="fa fa-star"></i> Like
-            </a>
-            <a href="{{ url_for('unlike', message_id=msg.id) }}" class="btn btn-sm btn-secondary">
-                <i class="fa fa-star"></i> Unlike
-            </a>
-            {% endif %}
-        </li>
+        </div>
+        
         {% endfor %}
-    </ul>
-
-    <!-- <p>{{ user.username }}'s Liked Messages: {{ user.user_likes.count() }}</p> -->
+    </div>
 
     <div class="row mt-4">
-      <div class="col-lg-6 col-md-8 col-sm-12 text-center">
-        <a href="{{ url_for('liked_messages', user_id=user.id) }}" class="btn btn-primary">View Liked Messages</a>
+        <div class="col-lg-6 col-md-8 col-sm-12 text-center">
+            <a href="{{ url_for('liked_messages', user_id=user.id) }}" class="btn btn-primary">View Liked Messages</a>
         </div>
-      </div>
-    </li>
- 
-  </ul>
+    </div>
+</div>
 
-</div>
-</div>
 {% endblock %}
+
 
 

@@ -1,7 +1,7 @@
 from datetime import datetime
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
 bcrypt = Bcrypt()
 db = SQLAlchemy()
@@ -9,9 +9,27 @@ db = SQLAlchemy()
 # Define the association table for followers and followings
 followers_following = db.Table(
     'followers_following',
-    db.Column('follower_id', db.Integer, db.ForeignKey('users.id')),
-    db.Column('following_id', db.Integer, db.ForeignKey('users.id'))
+    db.Column('follower_id', db.Integer, db.ForeignKey('users.id', ondelete='CASCADE')),
+    db.Column('following_id', db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'))
 )
+
+
+# from sqlalchemy import ForeignKeyConstraint
+
+# class FollowersFollowing(db.Model):
+#     __tablename__ = 'followers_following'
+
+#     # Other columns and definitions
+
+#     follower_id = db.Column(db.Integer, nullable=False)
+#     following_id = db.Column(db.Integer, nullable=False)
+
+#     # Define the foreign key constraint with ON DELETE CASCADE
+#     ForeignKeyConstraint(
+#         ['follower_id'],
+#         ['users.id'],
+#         ondelete='CASCADE'
+#     )
 
 class Like(db.Model):
     """Mapping user likes to messages."""
@@ -36,16 +54,13 @@ class Like(db.Model):
     liker = db.relationship('User', backref='likes')  # Change 'user' to 'liker'
     message = db.relationship('Message', backref='likes')
 
-
 class User(db.Model):
     """User in the system."""
 
     __tablename__ = 'users'
 
-    id = db.Column(
-        db.Integer,
-        primary_key=True,
-    )
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
 
     email = db.Column(
         db.Text,
@@ -82,48 +97,39 @@ class User(db.Model):
         nullable=False,
     )
 
-    messages = db.relationship('Message', backref='user', lazy='dynamic')
 
-    # Relationship for users that the logged-in user is following
+    messages = db.relationship('Message', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
-    following = db.relationship(
-        'User',
-        secondary=followers_following,
-        primaryjoin=(followers_following.c.follower_id == id),
-        secondaryjoin=(followers_following.c.following_id == id),
-        backref='followers_of',
-        lazy='dynamic'
-    )
+    # # Define the 'likes' relationship with cascade option
+    # user_likes = db.relationship('Like', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
+    #this shows the followers list on the page
     followers = db.relationship(
         'User',
         secondary=followers_following,
         primaryjoin=(followers_following.c.following_id == id),
         secondaryjoin=(followers_following.c.follower_id == id),
         backref='following_by',
-        lazy='dynamic'
+        lazy='dynamic',
+        cascade='all, delete-orphan',  # Cascade delete for followers
+        single_parent=True  # Set the single_parent flag
     )
-    
-    # Add the single_parent=True flag here for the following relationship
+    #this shows the following list on the page
     following = db.relationship(
         'User',
         secondary=followers_following,
         primaryjoin=(followers_following.c.follower_id == id),
         secondaryjoin=(followers_following.c.following_id == id),
         backref='followers_of',
-        lazy='dynamic',
-        cascade='all, delete-orphan',
-        single_parent=True  # Add this line
+        lazy='dynamic'
     )
-
-
 
     user_liked_messages = db.relationship(
         'Message',
         secondary='likes',
-        back_populates='likers'  # Explicitly specify the reverse relationship
+        back_populates='likers'
     )
-    # Define a relationship for liked messages
+
     user_likes = db.relationship('Like', backref='user', lazy='dynamic')
 
     def __repr__(self):
@@ -134,31 +140,25 @@ class User(db.Model):
         return other_user in self.followers
 
     def is_following(self, other_user):
-        """Is this user following `other_use`?"""
+        """Is this user following `other_user`?"""
         return other_user in self.following
     
-    @property
-    def following_count(self):
-        return self.followers.count()
-    
-    @property
-    def followers_count(self):
-        return self.followers.count()
-
-    @property
-    def liked_messages_count(self):
-        return self.user_likes.count()
-
+    def unfollow(self, user):
+        if self.is_following(user):
+            self.following.remove(user)
+            user.followers.remove(self)  # Remove the reverse relationship
+            return self
+        
     @classmethod
     def signup(cls, username, email, password, image_url):
         """Sign up user.
 
-        Hashes password and adds user to the system.
+        Hashes password and adds user to system.
         """
 
-        hashed_pwd = bcrypt.generate_password_hash(password).decode('utf-8')
+        hashed_pwd = bcrypt.generate_password_hash(password).decode('UTF-8')
 
-        user = cls(
+        user = User(
             username=username,
             email=email,
             password=hashed_pwd,
@@ -176,7 +176,7 @@ class User(db.Model):
         It searches for a user whose password hash matches this password
         and, if it finds such a user, returns that user object.
 
-        If it can't find a matching user (or if the password is wrong), it returns False.
+        If can't find matching user (or if password is wrong), returns False.
         """
 
         user = cls.query.filter_by(username=username).first()
@@ -187,6 +187,14 @@ class User(db.Model):
                 return user
 
         return False
+    
+    @classmethod
+    def create(cls, email, username, password):
+        """Create and return a new User."""
+        user = cls(email=email, username=username, password=password)
+        db.session.add(user)
+        db.session.commit()
+        return user
 
 class Message(db.Model):
     """An individual message ("warble")."""
@@ -227,9 +235,20 @@ class Message(db.Model):
     @property
     def like_count(self):
         return Like.query.filter_by(message_id=self.id).count()
-
+    
+#Using this on show.html
     def is_liked_by(self, user):
         return Like.query.filter_by(message_id=self.id, user_id=user.id).first() is not None
+
+#IMPLEMENT INTO APP- USING FOR TESTING
+    @classmethod
+    def create(cls, text, user_id):
+        """Create and return a new message."""
+        message = Message(text=text, user_id=user_id)
+        db.session.add(message)
+        db.session.commit()
+        return message
+
 
 def connect_db(app):
     """Connect this database to the provided Flask app.

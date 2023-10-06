@@ -9,17 +9,20 @@
       <div class="col-9">
         <ul class="user-stats nav nav-pills">
           <li class="stat">
-            <p class="small">Messages</p>
+            <p class="small">View Messages</p>
             <h4>
-              <a href="/users/{{ user.id }}">{{ user.messages.count() }}</a>
+              <a href="/users/{{ user.id }}">{{ user.messages.count() }} total</a>
             </h4>
           </li>
 
-          <li class="stat">
-            <p class="small">Likes</p>
+          <!-- <li class="stat">
+            <p class="small">Total Likes</p>
             <h4>
-              <a href="{{ url_for('liked_messages', user_id=user.id) }}">{{ user.user_likes.count() }}</a>
-          </li>
+               <a>{{ like_count }}</a>
+            </h4>
+         </li> -->
+         
+        
           <!-- <li class="stat">
             <p class="small">Following</p>
             <h4>
@@ -39,9 +42,13 @@
           <div class="ml-auto">
             {% if g.user.id == user.id %}
             <a href="/users/profile" class="btn btn-outline-secondary">Edit Profile</a>
-            <form method="POST" action="/users/delete" class="form-inline">
-              <button class="btn btn-outline-danger ml-2">Delete Profile</button>
-            </form>
+
+            <form method="POST" action="/users/{{ user.id }}" class="form-inline">
+              <input type="hidden" name="_method" value="DELETE">
+              <button type="submit" class="btn btn-outline-danger ml-2">Delete Profile</button>
+          </form>
+          
+            
             {% elif g.user %}
             {% if g.user.is_following(user) %}
             <form method="POST" action="/users/stop-following/{{ user.id }}">

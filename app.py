@@ -1,9 +1,10 @@
 import os
 from flask import Flask, render_template, request, flash, redirect, session, g, jsonify, url_for
 from flask_debugtoolbar import DebugToolbarExtension
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy import func, delete, and_, or_
 from forms import UserAddForm, LoginForm, MessageForm, UserProfileForm
-from models import db, connect_db, User, Message, Like
+from models import db, connect_db, User, Message, Like, followers_following
 
 CURR_USER_KEY = "curr_user"
 
@@ -18,7 +19,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
 app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', "it's a secret")
-toolbar = DebugToolbarExtension(app)
+# toolbar = DebugToolbarExtension(app)
+
 
 connect_db(app)
 app.app_context().push()
@@ -145,8 +147,20 @@ def users_show(user_id):
         followers_count=followers_count  # Pass the counts to the template
     )
 
+@app.route('/users/<string:username>')
+def user_profile(username):
+    """Show user profile."""
+    user = User.query.filter_by(username=username).first_or_404()
+    is_own_profile = g.user == user
 
+    # Add your profile rendering logic here
 
+    return render_template(
+        'users/show.html',
+        user=user,
+        is_own_profile=is_own_profile,
+        # Other variables you want to pass to the template
+    )
 
 @app.route('/users/<int:user_id>/following')
 def show_following(user_id):
@@ -159,8 +173,6 @@ def show_following(user_id):
     follower_count = user.followers.count()  # Count of followers for the profile being viewed
     
     return render_template('users/following.html', user=user, follower_count=follower_count)
-
-
 
 
 @app.route('/users/<int:user_id>/followers')
@@ -223,8 +235,34 @@ def stop_following(user_id):
     return redirect(f'/users/{user_id}')
 
 
+@app.route('/users/follow-unfollow/<int:user_id>', methods=['POST'])
+def follow_unfollow(user_id):
+    user_to_follow_unfollow = User.query.get_or_404(user_id)
+    action = request.form.get('action')
+
+    if action == 'follow':
+        if not g.user.is_following(user_to_follow_unfollow):
+            g.user.follow(user_to_follow_unfollow)
+            flash(f'You are now following {user_to_follow_unfollow.username}.', 'success')
+        else:
+            flash(f'You are already following {user_to_follow_unfollow.username}.', 'info')
+    elif action == 'unfollow':
+        # Check if there is exactly one row to delete
+        delete_count = db.session.query(followers_following).filter_by(follower_id=g.user.id, following_id=user_id).delete()
+        if delete_count == 1:
+            flash(f'You have unfollowed {user_to_follow_unfollow.username}.', 'success')
+        elif delete_count == 0:
+            flash(f'You are not following {user_to_follow_unfollow.username}.', 'danger')
+        else:
+            flash(f'You are now following {user_to_follow_unfollow.username}.', 'success')
+
+    db.session.commit()
+
+    # Redirect back to the user's profile page
+    return redirect(url_for('user_profile', username=user_to_follow_unfollow.username))
 
 
+#__________________________________________________________________________________________________
 @app.route('/users/profile', methods=["GET", "POST"])
 def profile():
     """Update profile for current user."""
@@ -245,16 +283,46 @@ def profile():
         return redirect(f"/users/{g.user.id}")
     return render_template('users/edit.html', form=form, user_id=user_id)
 
-@app.route('/users/delete', methods=["POST"])
-def delete_user():
-    """Delete user."""
-    if not g.user:
-        flash("Access unauthorized.", "danger")
-        return redirect("/")
-    do_logout()
-    db.session.delete(g.user)
-    db.session.commit()
-    return redirect("/signup")
+
+@app.route('/users/<int:user_id>', methods=['POST', 'DELETE'])
+def delete_user(user_id):
+    if request.form.get('_method') == 'DELETE':
+        user = User.query.get(user_id)
+        if user:
+            try:
+                # Delete likes associated with the user
+                Like.query.filter_by(user_id=user_id).delete()
+
+                # Delete records in the followers_following table
+                delete_statement = followers_following.delete().where(
+                    or_(
+                        followers_following.c.follower_id == user_id,
+                        followers_following.c.following_id == user_id
+                    )
+                )
+                db.session.execute(delete_statement)
+
+                # Remove the user from the followers' following lists
+                user.followers_by = []
+                user.following = []
+
+                # Delete the user
+                db.session.delete(user)
+                db.session.commit()
+                flash('User deleted successfully', 'success')
+            except Exception as e:
+                # Handle any exceptions that may occur during the deletion process
+                db.session.rollback()
+                flash('Error deleting user', 'error')
+                print("Error:", str(e))  # Add this line to print the error message
+            return redirect(url_for('user_profile', username=user.username))  # Redirect to an appropriate route after deletion
+        else:
+            flash('User not found', 'error')
+            return redirect(url_for('user_profile', username=user.username))  # Redirect to an appropriate route if the user is not found
+    else:
+        # Handle other POST requests here, if needed
+        pass
+
 
 ##############################################################################
 # Messages routes:
@@ -313,7 +381,6 @@ def homepage():
         return render_template('home.html', messages=messages, messages_count=messages_count, liked_messages_count=liked_messages_count, user=g.user)
     else:
         return render_template('home-anon.html')
-
 
 
 @app.after_request
