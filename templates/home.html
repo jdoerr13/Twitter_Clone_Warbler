@@ -58,14 +58,14 @@
                 <p>{{ msg.text }}</p>
             </div>
             
-            {% if g.user %}
+            {% if g.user and msg.user_id != g.user.id %}
             <a href="{{ url_for('like', message_id=msg.id) }}" class="btn btn-sm btn-primary">
                 <i class="fa fa-star"></i> Like
             </a>
             <a href="{{ url_for('unlike', message_id=msg.id) }}" class="btn btn-sm btn-secondary">
                 <i class="fa fa-star"></i> Unlike
             </a>
-            {% endif %}
+        {% endif %}
         </li>
         {% endfor %}
     </ul>

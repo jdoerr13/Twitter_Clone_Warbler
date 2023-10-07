@@ -1,8 +1,8 @@
 import os
 from flask import Flask, render_template, request, flash, redirect, session, g, jsonify, url_for
-from flask_debugtoolbar import DebugToolbarExtension
+# from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy import func, delete, and_, or_
+from sqlalchemy import or_
 from forms import UserAddForm, LoginForm, MessageForm, UserProfileForm
 from models import db, connect_db, User, Message, Like, followers_following
 
@@ -21,6 +21,9 @@ app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', "it's a secret")
 # toolbar = DebugToolbarExtension(app)
 
+# if app.debug:
+#     from flask_debugtoolbar import DebugToolbarExtension
+#     toolbar = DebugToolbarExtension(app)
 
 connect_db(app)
 app.app_context().push()
