@@ -44,10 +44,10 @@ class MessageViewTestCase(TestCase):
 
         self.client = app.test_client()
 
-        # Create the main test user
+        #  main test user
         self.testuser = User.signup(username="testuser", email="test@test.com", password="testuser", image_url=None)
 
-        # Create followers for the main test user
+        #  followers for the main test user
         follower1 = User.signup(username="follower1", email="follower1@test.com", password="follower1", image_url=None)
         follower2 = User.signup(username="follower2", email="follower2@test.com", password="follower2", image_url=None)
 
@@ -61,7 +61,7 @@ class MessageViewTestCase(TestCase):
         """Can use add a message?"""
 
         # Since we need to change the session to mimic logging in,
-        # we need to use the changing-session trick:
+        #  use the changing-session trick:
 
         with self.client as c:
             with c.session_transaction() as sess:
@@ -174,14 +174,14 @@ class MessageViewTestCase(TestCase):
             # Replace '1' with the actual user ID you want to test
             user_id_to_test = self.test_profile_user.id
 
-            # Make a GET request to the user profile route
+            # GET request to the user profile route
             resp = c.get(f"/users/{user_id_to_test}")
 
-            # Assert that the response status code is 200 (OK)
+            # response status code is 200 (OK)
             self.assertEqual(resp.status_code, 200)
 
-            # Assert that the response data contains expected content
+            # response data contains expected content
             self.assertIn(b"User Profile", resp.data)
             self.assertIn(b"Followers", resp.data)
             self.assertIn(b"Following", resp.data)
-            # Add more assertions as needed based on your template
+           

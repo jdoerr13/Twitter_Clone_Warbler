@@ -91,9 +91,14 @@ def login():
 
 @app.route('/logout')
 def logout():
-    """Handle logout of user."""
-    session.pop(CURR_USER_KEY)
-    flash("You have been logged out.", "success")
+    """Logout user."""
+
+    try:
+        session.pop(CURR_USER_KEY)
+        flash("You have been logged out", "success")
+    except KeyError:
+        flash("You are not logged in", "danger")
+
     return redirect("/")
 
 ##############################################################################
@@ -291,10 +296,19 @@ def profile():
 def delete_user(user_id):
     if request.form.get('_method') == 'DELETE':
         user = User.query.get(user_id)
+        print("User ID:", user_id)
         if user:
             try:
-                # Delete likes associated with the user
-                Like.query.filter_by(user_id=user_id).delete()
+                  # Delete likes associated with the user
+                likes_to_delete = Like.query.filter_by(user_id=user_id).all()
+                print("User Likes to Delete:", likes_to_delete)
+
+                for like in likes_to_delete:
+                    print("Like ID to Delete:", like.id)
+
+                    db.session.delete(like)
+                db.session.commit()  # Commit the deletion of likes
+#THE LIKES ARE DELETING, BUT I AM STILL GETTING THIS ERROR: Error: UPDATE statement on table 'likes' expected to update 1 row(s); 0 were matched.
 
                 # Delete records in the followers_following table
                 delete_statement = followers_following.delete().where(
@@ -318,7 +332,7 @@ def delete_user(user_id):
                 db.session.rollback()
                 flash('Error deleting user', 'error')
                 print("Error:", str(e))  # Add this line to print the error message
-            return redirect(url_for('user_profile', username=user.username))  # Redirect to an appropriate route after deletion
+            return redirect(url_for('signup'))  # Redirect to an appropriate route after deletion
         else:
             flash('User not found', 'error')
             return redirect(url_for('user_profile', username=user.username))  # Redirect to an appropriate route if the user is not found
